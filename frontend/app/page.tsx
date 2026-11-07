@@ -3,11 +3,31 @@
 
 import { useState, type FormEvent } from "react";
 
+// Describes each plant prediction returned by Pl@ntNet.
+type PlantResult = {
+  score: number;
+  species: {
+    scientificName: string;
+    commonNames: string[];
+    family: {
+      scientificName: string;
+    };
+  };
+};
+
+// Describes the complete response from our FastAPI backend.
+type IdentificationResponse = {
+  bestMatch: string;
+  results: PlantResult[];
+};
+
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [results, setResults] = useState<IdentificationResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!selectedFile) {
@@ -15,9 +35,40 @@ export default function Home() {
       return;
     }
 
-    setMessage(
-      "Your photo is ready! Plant identification will be connected next."
-    );
+    setIsLoading(true);
+    setMessage("");
+    setResults(null);
+
+    try {
+      // Prepare the image for uploading.
+      const formData = new FormData();
+      formData.append("image", selectedFile);
+
+      // Send the image to our FastAPI backend.
+      const response = await fetch("http://localhost:8000/identify", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      // Handle errors returned by the backend.
+      if (!response.ok) {
+        throw new Error(data.detail || "Plant identification failed.");
+      }
+
+      // Save the identification results.
+      setResults(data);
+
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -214,12 +265,15 @@ export default function Home() {
               <input
                 id="plant-image"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png"
                 capture="environment"
                 className="sr-only"
                 onChange={(event) => {
-                  setSelectedFile(event.target.files?.[0] ?? null);
+                  const file = event.target.files?.[0] ?? null;
+
+                  setSelectedFile(file);
                   setMessage("");
+                  setResults(null);
                 }}
               />
 
@@ -235,23 +289,100 @@ export default function Home() {
 
             <button
               type="submit"
-              disabled={!selectedFile}
+              disabled={!selectedFile || isLoading}
               className="mt-6 w-full rounded-full bg-[#234b35] px-8 py-4 text-sm font-medium text-white transition hover:bg-[#183b29] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Identify my plant <span className="ml-2">↗</span>
+              {isLoading
+                ? "Identifying your plant..."
+                : <>Identify my plant <span className="ml-2">↗</span></>}
             </button>
+
 
             {message && (
               <p
-                role="status"
+                role="alert"
                 className="mt-4 text-center text-sm text-[#526653]"
               >
                 {message}
               </p>
             )}
 
+
+            {/* IDENTIFICATION RESULTS */}
+            {results && (
+              <div className="mt-8 rounded-2xl border border-[#dce5d8] bg-[#fafbf8] p-6">
+
+                <p className="text-xs font-semibold tracking-widest text-[#82977a]">
+                  IDENTIFICATION RESULT
+                </p>
+
+                <h3 className="mt-3 text-2xl font-semibold text-[#234b35]">
+                  {results.bestMatch}
+                </h3>
+
+                <p className="mt-2 text-sm text-[#777f75]">
+                  Here are the three closest matches for your photo.
+                </p>
+
+                <div className="mt-6 space-y-4">
+                  {results.results.map((plant, index) => (
+                    <div
+                      key={plant.species.scientificName}
+                      className="rounded-xl border border-[#e5e8df] bg-white p-4"
+                    >
+
+                      <div className="flex items-start justify-between gap-3">
+
+                        <div>
+                          <p className="text-xs text-[#82977a]">
+                            MATCH {index + 1}
+                          </p>
+
+                          <h4 className="mt-1 font-semibold text-[#234b35]">
+                            {plant.species.scientificName}
+                          </h4>
+
+                          <p className="mt-1 text-xs text-[#777f75]">
+                            Family: {plant.species.family.scientificName}
+                          </p>
+
+                          {plant.species.commonNames.length > 0 && (
+                            <p className="mt-2 text-sm text-[#777f75]">
+                              Also known as: {plant.species.commonNames.join(", ")}
+                            </p>
+                          )}
+                        </div>
+
+                        <span className="shrink-0 rounded-full bg-[#edf2e9] px-3 py-2 text-sm font-medium text-[#234b35]">
+                          {(plant.score * 100).toFixed(1)}%
+                        </span>
+
+                      </div>
+
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#edf2e9]">
+                        <div
+                          className="h-full rounded-full bg-[#82977a]"
+                          style={{
+                            width: `${plant.score * 100}%`,
+                          }}
+                        />
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-5 text-xs leading-5 text-[#899187]">
+                  These are possible matches, not guaranteed identifications.
+                  The scores indicate the model's confidence, not guaranteed probabilities.
+                </p>
+
+              </div>
+            )}
+
+
             <p className="mt-5 text-center text-xs text-[#9a9f96]">
-              Supported image formats depend on your browser.
+              Supported image formats: JPEG and PNG.
             </p>
 
           </form>
@@ -382,7 +513,7 @@ export default function Home() {
 
         <div className="mx-auto mt-10 max-w-7xl border-t border-white/15 pt-6">
           <p className="text-xs text-[#c1d0c1]">
-            © {new Date().getFullYear()} PlantLab. Made with curiosity and a little love for nature.
+            © 2026 PlantLab. Made with curiosity and a little love for nature.
           </p>
         </div>
 

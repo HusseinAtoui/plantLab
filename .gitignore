@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# ML datasets and model weights
+ml/datasets/
+ml/models/*.pth
+ml/models/*.pt
+ml/models/*.onnx
