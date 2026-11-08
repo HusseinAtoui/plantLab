@@ -125,6 +125,7 @@ export default function Home() {
   const [results, setResults] = useState<IdentificationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const bestPlant = results?.results[0];
 
   useEffect(() => {
     if (!selectedFile) {
@@ -497,53 +498,150 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-[#eaf1e4] p-5 sm:p-6">
-                    <p className="text-[10px] font-bold tracking-[0.18em] text-[#477449]">
-                      BEST MATCH
-                    </p>
-                    <h3 className="mt-2 break-words font-serif text-2xl font-bold text-[#173d28]">
-                      {results.bestMatch}
-                    </h3>
+                  <div className="overflow-hidden rounded-2xl border border-[#dce7d6] bg-[#f8faf5]">
+                    <div className="flex items-center justify-between border-b border-[#e2e9de] px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-[#5c9a50]" />
+                        <p className="text-[10px] font-bold tracking-[0.18em] text-[#477449]">
+                          BEST MATCH
+                        </p>
+                      </div>
+
+                      <span className="rounded-full bg-[#e5efdf] px-3 py-1.5 text-[10px] font-bold text-[#397044]">
+                        TOP RESULT
+                      </span>
+                    </div>
+
+                    <div className="grid gap-5 p-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:p-6">
+                      {previewUrl && (
+                        <div className="h-48 overflow-hidden rounded-xl bg-white sm:h-full sm:min-h-[190px]">
+                          <img
+                            src={previewUrl}
+                            alt="Identified plant"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex min-w-0 flex-col justify-center">
+                        {bestPlant ? (
+                          <>
+                            <p className="text-xs font-semibold text-[#64845d]">
+                              {bestPlant.species.commonNames?.[0] || "Plant identification"}
+                            </p>
+
+                            <h3 className="mt-2 break-words font-serif text-2xl font-bold text-[#173d28] sm:text-3xl">
+                              {bestPlant.species.scientificName}
+                            </h3>
+
+                            <p className="mt-3 text-xs text-[#758071]">
+                              Family
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-[#34563a]">
+                              {bestPlant.species.family?.scientificName ?? "Unknown"}
+                            </p>
+
+                            {bestPlant.species.commonNames?.length > 1 && (
+                              <p className="mt-3 text-xs leading-5 text-[#758071]">
+                                Also known as: {bestPlant.species.commonNames.slice(1).join(", ")}
+                              </p>
+                            )}
+
+                            <div className="mt-6">
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-xs font-semibold text-[#64745f]">
+                                  Match score
+                                </span>
+                                <span className="text-sm font-bold text-[#285d36]">
+                                  {(bestPlant.score * 100).toFixed(1)}%
+                                </span>
+                              </div>
+
+                              <div className="h-2 overflow-hidden rounded-full bg-[#e5ecdf]">
+                                <div
+                                  className="h-full rounded-full bg-[#5c9a50] transition-all duration-700"
+                                  style={{
+                                    width: `${bestPlant.score * 100}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <h3 className="break-words font-serif text-2xl font-bold text-[#173d28]">
+                            {results.bestMatch}
+                          </h3>
+                        )}
+                      </div>
+                    </div>
                   </div>
+
 
                   <div className="mt-7">
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <h3 className="text-sm font-bold text-[#234b35]">
                         Other possible matches
                       </h3>
-                      <span className="text-[11px] text-[#7d897b]">Top predictions</span>
+                      <span className="text-[11px] text-[#7d897b]">
+                        Alternative predictions
+                      </span>
                     </div>
 
                     <div className="space-y-3">
-                      {results.results.map((plant, index) => (
+                      {results.results.slice(1).map((plant, index) => (
                         <div
                           key={plant.species.scientificName}
-                          className="rounded-2xl border border-[#e2e9de] bg-white p-4"
+                          className="rounded-2xl border border-[#e2e9de] bg-[#f8faf5] p-4 transition-colors hover:border-[#cbdcc4]"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-bold tracking-widest text-[#66845f]">
-                                MATCH {index + 1}
-                              </p>
-                              <h4 className="mt-1 break-words text-sm font-semibold text-[#234b35]">
-                                {plant.species.scientificName}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#e5efdf] text-[10px] font-bold text-[#477449]">
+                                  {index + 2}
+                                </span>
+                                <span className="text-[10px] font-bold tracking-widest text-[#66845f]">
+                                  ALTERNATIVE MATCH
+                                </span>
+                              </div>
+
+                              <h4 className="mt-3 break-words text-base font-bold text-[#234b35]">
+                                {plant.species.commonNames?.[0] ||
+                                  plant.species.scientificName}
                               </h4>
-                              <p className="mt-1 text-xs text-[#788476]">
-                                Family: {plant.species.family?.scientificName ?? "Unknown"}
+
+                              <p className="mt-1 break-words font-serif text-sm italic text-[#71816c]">
+                                {plant.species.scientificName}
                               </p>
-                              {plant.species.commonNames?.length > 0 && (
-                                <p className="mt-2 text-xs leading-5 text-[#657061]">
-                                  Also known as: {plant.species.commonNames.join(", ")}
+
+                              <div className="mt-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#899484]">
+                                  Family
+                                </p>
+                                <p className="mt-1 text-xs font-medium text-[#52664e]">
+                                  {plant.species.family?.scientificName ?? "Unknown"}
+                                </p>
+                              </div>
+
+                              {plant.species.commonNames?.length > 1 && (
+                                <p className="mt-2 text-xs leading-5 text-[#788476]">
+                                  Also known as: {plant.species.commonNames.slice(1).join(", ")}
                                 </p>
                               )}
                             </div>
-                            <span className="shrink-0 rounded-full bg-[#eaf1e4] px-3 py-2 text-xs font-bold text-[#285d36]">
-                              {(plant.score * 100).toFixed(1)}%
-                            </span>
+
+                            <div className="shrink-0 text-right">
+                              <span className="text-lg font-bold text-[#285d36]">
+                                {(plant.score * 100).toFixed(1)}%
+                              </span>
+                              <p className="mt-1 text-[10px] text-[#899484]">
+                                Match score
+                              </p>
+                            </div>
                           </div>
-                          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#edf2e9]">
+
+                          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#e5ecdf]">
                             <div
-                              className="h-full rounded-full bg-[#5c9a50] transition-all duration-700"
+                              className="h-full rounded-full bg-[#8eae7e] transition-all duration-700"
                               style={{ width: `${plant.score * 100}%` }}
                             />
                           </div>
